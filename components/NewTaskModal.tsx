@@ -26,18 +26,25 @@ export const NewTaskModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: ()
         e.preventDefault();
         if (!title.trim()) return;
 
-        addTask({
+        const newTask: any = {
             projectId: activeProjectId,
             title,
             status: 'todo' as TaskStatus,
             priority,
             isMeeting,
             createdAt: new Date(),
-            lastUpdated: new Date(),
-            // If it's a meeting, save the selected date
-            meetingTime: isMeeting ? new Date(meetingTime) : undefined,
-            color: taskColor || undefined,
-        });
+            lastUpdated: new Date()
+        };
+
+        if (isMeeting) {
+            newTask.meetingTime = new Date(meetingTime);
+        }
+
+        if (taskColor) {
+            newTask.color = taskColor;
+        }
+
+        addTask(newTask);
 
         setTitle('');
         setMeetingTime('');

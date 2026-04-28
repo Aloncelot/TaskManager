@@ -45,11 +45,22 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     setActiveProject: (id) => set({ activeProjectId: id }),
 
     subscribeData: (uid) => {
+        const convertTimestamps = (obj: any) => {
+            if (!obj) return obj;
+            const result = { ...obj };
+            for (const key of Object.keys(result)) {
+                if (result[key] && typeof result[key].toDate === 'function') {
+                    result[key] = result[key].toDate();
+                }
+            }
+            return result;
+        };
+
         const qProjects = query(collection(db, `users/${uid}/projects`));
         const qTasks = query(collection(db, `users/${uid}/tasks`));
 
         const unsubProjects = onSnapshot(qProjects, (snapshot) => {
-            const projects = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Project));
+            const projects = snapshot.docs.map(d => ({ id: d.id, ...convertTimestamps(d.data()) } as Project));
             set({ projects, loading: false });
             if (projects.length > 0 && !get().activeProjectId) {
                 set({ activeProjectId: projects[0].id });
@@ -57,7 +68,7 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
         });
 
         const unsubTasks = onSnapshot(qTasks, (snapshot) => {
-            const tasks = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Task));
+            const tasks = snapshot.docs.map(d => ({ id: d.id, ...convertTimestamps(d.data()) } as Task));
             set({ tasks });
         });
 
