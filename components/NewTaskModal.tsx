@@ -3,14 +3,22 @@
 import React, { useState } from 'react';
 import { X, Plus, Calendar, Clock } from 'lucide-react';
 import { useTaskStore } from '../store/useTaskStore';
-import { Priority, TaskStatus } from '../types';
+import { Priority, TaskStatus, Task } from '../types';
+
+interface ModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    taskToEdit?: Task | null;
+    editTask: (id: string, updatedData: Partial<Task>) => void;
+}
 
 export const NewTaskModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) => {
-    const { activeProjectId, addTask } = useTaskStore();
+    const { activeProjectId, addTask, editTask } = useTaskStore();
     const [title, setTitle] = useState('');
     const [priority, setPriority] = useState<Priority>('medium');
     const [isMeeting, setIsMeeting] = useState(false);
     const [meetingTime, setMeetingTime] = useState('');
+    const [taskColor, setTaskColor] = useState('');
 
     if (!isOpen) return null;
 
@@ -29,10 +37,12 @@ export const NewTaskModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: ()
             lastUpdated: new Date(),
             // Si es meeting, guardamos la fecha seleccionada
             meetingTime: isMeeting ? new Date(meetingTime) : undefined,
+            color: taskColor || undefined,
         });
 
         setTitle('');
         setMeetingTime('');
+        setTaskColor('');
         onClose();
     };
 
@@ -48,9 +58,10 @@ export const NewTaskModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: ()
             >
                 {/* CONTENIDO INTERIOR */}
                 <div
-                    className="bg-[#0b2229] w-full p-6 relative"
+                    className="bg-[#0b2229] w-full p-6 relative overflow-hidden"
                     style={{ clipPath: cyberShape }}
                 >
+                    <div className="absolute inset-0 bg-[linear-gradient(transparent_50%,rgba(0,0,0,0.3)_50%)] bg-[length:100%_4px] pointer-events-none"></div>
                     <button onClick={onClose} className="absolute top-4 right-4 text-cyan-500 hover:text-white z-20">
                         <X size={20} />
                     </button>
@@ -85,14 +96,29 @@ export const NewTaskModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: ()
                                     <option value="critical">Critical</option>
                                 </select>
                             </div>
-                            <div className="flex flex-col justify-end">
+                            <div>
+                                <label className="block text-[10px] text-cyan-500 uppercase font-bold mb-2 tracking-widest">Task Color</label>
+                                <select
+                                    className="w-full bg-black/40 border-b-2 border-cyan-900 p-2 text-white focus:border-[#00ffff] outline-none"
+                                    value={taskColor}
+                                    onChange={(e) => setTaskColor(e.target.value)}
+                                >
+                                    <option value="">Project Default</option>
+                                    <option value="#00ffff">Cyan Neon</option>
+                                    <option value="#ff00ff">Magenta</option>
+                                    <option value="#39ff14">Matrix Green</option>
+                                    <option value="#ff3131">Alert Red</option>
+                                    <option value="#fce83a">Cyber Yellow</option>
+                                </select>
+                            </div>
+                            <div className="col-span-2">
                                 <button
                                     type="button"
                                     onClick={() => setIsMeeting(!isMeeting)}
-                                    className={`p-2 border-2 flex items-center justify-center gap-2 transition-all uppercase text-[10px] font-black ${isMeeting ? 'border-[#39ff14] text-[#39ff14] bg-[#39ff14]/10 shadow-[0_0_10px_rgba(57,255,20,0.3)]' : 'border-gray-700 text-gray-500'
+                                    className={`w-full p-2 border-2 flex items-center justify-center gap-2 transition-all uppercase text-[10px] font-black ${isMeeting ? 'border-[#39ff14] text-[#39ff14] bg-[#39ff14]/10 shadow-[0_0_10px_rgba(57,255,20,0.3)]' : 'border-gray-700 text-gray-500'
                                         }`}
                                 >
-                                    <Calendar size={14} /> {isMeeting ? 'Meeting' : 'Task'}
+                                    <Calendar size={14} /> {isMeeting ? 'Meeting Protocol Active' : 'Enable Meeting Protocol'}
                                 </button>
                             </div>
                         </div>
@@ -115,13 +141,14 @@ export const NewTaskModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: ()
 
                         <button
                             type="submit"
-                            className="w-full text-black font-black uppercase py-4 tracking-[0.3em] hover:brightness-125 transition-all mt-4"
+                            className="w-full relative text-black font-black uppercase py-4 tracking-[0.3em] hover:brightness-125 transition-all mt-4 overflow-hidden group"
                             style={{
                                 background: borderColor,
                                 clipPath: 'polygon(0 0, 90% 0, 100% 30%, 100% 100%, 10% 100%, 0 70%)'
                             }}
                         >
-                            Execute Sync
+                            <div className="absolute inset-0 bg-[linear-gradient(transparent_50%,rgba(0,0,0,0.2)_50%)] bg-[length:100%_4px] pointer-events-none"></div>
+                            <span className="relative z-10">Execute Sync</span>
                         </button>
                     </form>
                 </div>

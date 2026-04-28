@@ -39,3 +39,36 @@ body {
   z-index: 50;
   pointer-events: none;
 }
+
+/* Protocolo de Purga (Glitch y Desintegración) */
+@keyframes cyber-purge {
+  0% {
+    filter: brightness(1) blur(0px);
+    transform: scale(1) translateX(0);
+    opacity: 1;
+  }
+
+  20% {
+    filter: brightness(2) blur(2px);
+    transform: scale(1.02) translateX(-5px) skewX(5deg);
+    opacity: 0.9;
+  }
+
+  40% {
+    filter: brightness(3) blur(4px);
+    transform: scale(0.95) translateX(5px) skewX(-5deg);
+    opacity: 0.7;
+  }
+
+  100% {
+    filter: brightness(0) blur(10px);
+    transform: scale(0.8) translateY(-20px);
+    opacity: 0;
+  }
+}
+
+.animate-purge {
+  animation: cyber-purge 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+  pointer-events: none;
+  /* Evita clics fantasma mientras desaparece */
+}

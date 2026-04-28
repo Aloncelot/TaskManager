@@ -11,6 +11,8 @@ export interface Project {
     createdAt: Date;
     isActive: boolean; // Para el efecto de resaltado/atenuado
     colorTheme: string; // Ej: '#00ffff' (cian)
+    dueDate?: Date;
+    isArchived?: boolean;
 }
 
 export interface Task {
@@ -24,6 +26,8 @@ export interface Task {
     meetingTime?: Date;  // Para las alertas VERDES
     lastUpdated: Date;   // Para detectar el "estancamiento" (+7 días = ÁMBAR)
     isMeeting: boolean;
+    color?: string; // Color personalizado de la tarea
+    snoozedUntil?: Date; // Para la alerta de meeting
 }
 
 export interface UserProfile {

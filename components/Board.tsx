@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { FolderKanban, Rocket, Zap, CheckCircle2, OctagonAlert, Plus } from 'lucide-react';
+import { FolderKanban, Rocket, Zap, CheckCircle2, OctagonAlert, Plus, Archive } from 'lucide-react';
 import { useTaskStore } from '../store/useTaskStore';
 import { Task, Project, TaskStatus } from '../types';
 import { TaskCard } from './TaskCard';
@@ -31,6 +31,7 @@ export const Board: React.FC<Props> = ({ tasks, projects, activeProjectId }) => 
 
     // Funciones del Store
     const updateTaskStatus = useTaskStore(state => state.updateTaskStatus);
+    const archiveProject = useTaskStore(state => state.archiveProject);
 
     // ==========================================
     // PROTOCOLO DRAG AND DROP (APIs Nativas)
@@ -50,6 +51,16 @@ export const Board: React.FC<Props> = ({ tasks, projects, activeProjectId }) => 
         }
     };
 
+    const handleDragLeave = () => {
+        setActiveDragColumn(null);
+    };
+
+    // Filtramos las tareas para NO mostrar las que pertenecen a proyectos archivados
+    const activeTasks = tasks.filter(task => {
+        const project = projects.find(p => p.id === task.projectId);
+        return project && !project.isArchived;
+    });
+
     return (
         <div className="flex-1 overflow-x-auto p-6 custom-scrollbar relative z-10">
 
@@ -58,10 +69,19 @@ export const Board: React.FC<Props> = ({ tasks, projects, activeProjectId }) => 
       ========================================== */}
             <div className="mb-8 flex items-center justify-between border-l-4 border-[#00ffff] pl-4">
                 <div>
-                    <h1 className="text-3xl font-black uppercase tracking-tighter text-white">
+                    <h1 className="text-3xl font-black uppercase tracking-tighter text-white flex items-center gap-3">
                         Project: <span style={{ color: activeProject?.colorTheme || '#00ffff' }}>
                             {activeProject?.name || 'Unselected'}
                         </span>
+                        {activeProject && (
+                            <button 
+                                onClick={() => archiveProject(activeProjectId)}
+                                className="text-gray-500 hover:text-yellow-500 transition-colors"
+                                title="Move to History / Archive"
+                            >
+                                <Archive size={20} />
+                            </button>
+                        )}
                     </h1>
                     <p className="text-[10px] font-mono text-gray-400 uppercase tracking-widest">
                         System Status: Operational // Active_Focus: {activeProjectId}
@@ -69,18 +89,20 @@ export const Board: React.FC<Props> = ({ tasks, projects, activeProjectId }) => 
                 </div>
 
                 {/* BOTÓN DISPARADOR CON WRAPPER DE 2PX (Diagonal brillante perfecta) */}
-                <div
-                    className="p-[2px] transition-all duration-300 hover:scale-105 active:scale-95 shadow-[0_0_15px_rgba(0,255,255,0.2)]"
-                    style={{ background: '#00ffff', clipPath: 'polygon(10% 0, 100% 0, 90% 100%, 0 100%)' }}
-                >
-                    <button
-                        onClick={() => setIsModalOpen(true)}
-                        className="relative bg-[#0b2229] hover:bg-[#00ffff] text-[#00ffff] hover:text-black px-6 py-2 flex items-center gap-3 font-black uppercase tracking-[0.2em] text-xs transition-colors duration-300"
-                        style={{ clipPath: 'polygon(10% 0, 100% 0, 90% 100%, 0 100%)' }}
+                <div className="shrink-0" style={{ perspective: '1000px' }}>
+                    <div
+                        className="p-[2px] transition-transform duration-300 hover:scale-105 active:scale-95 shadow-[0_0_15px_rgba(0,255,255,0.2)] transform-gpu"
+                        style={{ background: '#00ffff', clipPath: 'polygon(10% 0, 100% 0, 90% 100%, 0 100%)' }}
                     >
-                        <Plus size={18} className="animate-pulse" />
-                        <span>Inyectar Tarea</span>
-                    </button>
+                        <button
+                            onClick={() => setIsModalOpen(true)}
+                            className="group relative bg-[#0b2229] hover:bg-[#00ffff] text-[#00ffff] hover:text-black px-6 py-2 flex items-center gap-3 font-black uppercase tracking-[0.2em] text-xs transition-colors duration-300"
+                            style={{ clipPath: 'polygon(10% 0, 100% 0, 90% 100%, 0 100%)' }}
+                        >
+                            <Plus size={18} className="animate-pulse transition-transform duration-500 group-hover:rotate-180" />
+                            <span>Inyectar Tarea</span>
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -122,18 +144,29 @@ export const Board: React.FC<Props> = ({ tasks, projects, activeProjectId }) => 
                             <div className="absolute inset-0 bg-[linear-gradient(transparent_50%,rgba(0,0,0,0.2)_50%)] bg-[length:100%_4px] pointer-events-none z-0"></div>
 
                             {/* Renderizado de Tarjetas */}
-                            <div className="relative z-10 flex flex-col gap-4 mt-2">
-                                {tasks
-                                    .filter((t) => t.status === column.id)
-                                    .map((task) => (
-                                        <TaskCard
-                                            key={task.id}
-                                            task={task}
-                                            isActiveProject={task.projectId === activeProjectId}
-                                            projectColor={activeProject?.colorTheme || '#00ffff'}
-                                            onEditTask={(task) => console.log('Próximamente: Editar', task.title)}
-                                        />
-                                    ))}
+                            <div className="relative z-10 flex flex-col gap-4 mt-2 min-h-[100px]">
+                                {activeTasks.filter((t) => t.status === column.id).length === 0 ? (
+                                    <div className="flex flex-col items-center justify-center h-24 border border-dashed border-cyan-900/30 opacity-50 mt-2">
+                                        <div className="text-[10px] font-mono text-cyan-500 uppercase tracking-widest animate-pulse">
+                                            [ System Idle ]
+                                        </div>
+                                        <div className="text-[8px] font-mono text-cyan-700 uppercase tracking-widest">
+                                            No tasks in queue
+                                        </div>
+                                    </div>
+                                ) : (
+                                    activeTasks
+                                        .filter((t) => t.status === column.id)
+                                        .map((task) => (
+                                            <TaskCard
+                                                key={task.id}
+                                                task={task}
+                                                isActiveProject={task.projectId === activeProjectId}
+                                                projectColor={activeProject?.colorTheme || '#00ffff'}
+                                                onEditTask={(task) => console.log('Próximamente: Editar', task.title)}
+                                            />
+                                        ))
+                                )}
                             </div>
                         </div>
                     </div>
