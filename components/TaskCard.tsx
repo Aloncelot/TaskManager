@@ -28,21 +28,21 @@ export const TaskCard = ({ task, isActiveProject, projectColor, onEditTask }: Ta
     };
 
     const handleDelete = () => {
-        setIsDeleting(true); // Activa la animación
+        setIsDeleting(true); // Trigger animation
         setTimeout(() => {
-            deleteTask(task.id); // Borra el dato medio segundo después
+            deleteTask(task.id); // Delete data half a second later
         }, 400);
     };
 
     const STAGNANT_MS = 4 * 24 * 60 * 60 * 1000;
     const timeSinceLastUpdate = new Date().getTime() - new Date(task.lastUpdated).getTime();
 
-    // Solo marca estancamiento si está en backlog, todo o in-progress
+    // Only mark as stalled if it's in backlog, todo, or in-progress
     const isStagnant = isActiveProject &&
         (task.status === 'todo' || task.status === 'in-progress' || task.status === 'backlog') &&
         (timeSinceLastUpdate > STAGNANT_MS);
 
-    // EL CEREBRO DEL COLOR: Si no está activo, forzamos un gris neutro. Si está activo, usamos su color real o el del proyecto.
+    // COLOR LOGIC: If inactive, force neutral gray. If active, use its real color or the project's color.
     const activeColor = isActiveProject ? (task.color || projectColor) : '#6b7280';
 
     const getPriorityColor = (priority: Priority) => {

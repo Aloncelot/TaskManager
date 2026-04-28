@@ -27,7 +27,6 @@ export const NewTaskModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: ()
         if (!title.trim()) return;
 
         addTask({
-            id: crypto.randomUUID(),
             projectId: activeProjectId,
             title,
             status: 'todo' as TaskStatus,
@@ -35,7 +34,7 @@ export const NewTaskModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: ()
             isMeeting,
             createdAt: new Date(),
             lastUpdated: new Date(),
-            // Si es meeting, guardamos la fecha seleccionada
+            // If it's a meeting, save the selected date
             meetingTime: isMeeting ? new Date(meetingTime) : undefined,
             color: taskColor || undefined,
         });
@@ -51,12 +50,12 @@ export const NewTaskModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: ()
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
-            {/* WRAPPER DEL BORDE (El que da la línea brillante) */}
+            {/* BORDER WRAPPER (Glowing line) */}
             <div
                 className="p-[2px] w-full max-w-md transition-colors duration-500"
                 style={{ background: borderColor, clipPath: cyberShape }}
             >
-                {/* CONTENIDO INTERIOR */}
+                {/* INNER CONTENT */}
                 <div
                     className="bg-[#0b2229] w-full p-6 relative overflow-hidden"
                     style={{ clipPath: cyberShape }}
@@ -66,7 +65,7 @@ export const NewTaskModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: ()
                         <X size={20} />
                     </button>
 
-                    <h2 className="font-black tracking-tighter text-xl mb-6 uppercase flex items-center gap-2" style={{ color: borderColor }}>
+                    <h2 className="relative z-10 font-black tracking-tighter text-xl mb-6 uppercase flex items-center gap-2" style={{ color: borderColor }}>
                         <Plus size={20} /> New Task Protocol
                     </h2>
 
@@ -123,7 +122,7 @@ export const NewTaskModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: ()
                             </div>
                         </div>
 
-                        {/* SECCIÓN CONDICIONAL DE FECHA Y HORA */}
+                        {/* CONDITIONAL DATE/TIME SECTION */}
                         {isMeeting && (
                             <div className="animate-in fade-in slide-in-from-top-2 duration-300">
                                 <label className="block text-[10px] text-[#39ff14] uppercase font-bold mb-2 tracking-widest flex items-center gap-2">

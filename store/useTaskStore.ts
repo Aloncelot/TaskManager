@@ -1,114 +1,134 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { db } from '../lib/firebase';
+import {
+    collection,
+    addDoc,
+    updateDoc,
+    deleteDoc,
+    doc,
+    onSnapshot,
+    query,
+    where
+} from 'firebase/firestore';
 import { Task, Project, TaskStatus } from '../types';
-
-// Datos de prueba para arrancar la obra
-const mockProjects: Project[] = [
-    { id: 'proj-1', name: 'Maple St. Building', isActive: true, colorTheme: '#00ffff', createdAt: new Date() },
-    { id: 'proj-2', name: 'White Center', isActive: false, colorTheme: '#ff00ff', createdAt: new Date() }
-];
-
-const mockTasks: Task[] = [
-    { id: 'tsk-001', projectId: 'proj-1', title: 'Cálculo de fundaciones', status: 'done', priority: 'high', createdAt: new Date('2026-04-10'), isMeeting: false, lastUpdated: new Date() },
-    { id: 'tsk-002', projectId: 'proj-1', title: 'Wall panels primer nivel', status: 'in-progress', priority: 'medium', createdAt: new Date(), isMeeting: false, lastUpdated: new Date('2026-04-20') },
-    { id: 'tsk-003', projectId: 'proj-2', title: 'Revisión de planos estructurales', status: 'todo', priority: 'critical', createdAt: new Date(), dueDate: new Date('2026-04-26'), isMeeting: false, lastUpdated: new Date() },
-    { id: 'tsk-004', projectId: 'proj-1', title: 'Junta de aclaraciones', status: 'todo', priority: 'medium', createdAt: new Date(), meetingTime: new Date('2026-04-24T15:00:00'), isMeeting: true, lastUpdated: new Date() },
-    { id: 'tsk-005', projectId: 'proj-2', title: 'Cotización de aceros', status: 'backlog', priority: 'low', createdAt: new Date('2026-04-01'), isMeeting: false, lastUpdated: new Date('2026-04-01') }
-];
 
 interface TaskStore {
     projects: Project[];
     tasks: Task[];
     activeProjectId: string;
+    loading: boolean;
+    userUid: string | null;
+
+    setUserUid: (uid: string | null) => void;
+    subscribeData: (uid: string) => () => void;
     setActiveProject: (id: string) => void;
-    addProject: (project: Project) => void;
-    archiveProject: (id: string) => void;
-    restoreProject: (id: string) => void;
-    deleteProject: (id: string) => void;
-    addTask: (task: Task) => void;
-    deleteTask: (id: string) => void;
-    updateTaskStatus: (id: string, newStatus: TaskStatus) => void;
-    editTask: (id: string, updatedData: Partial<Task>) => void;
+
+    // Cloud Actions (uses internal uid)
+    addProject: (project: Omit<Project, 'id'>) => Promise<void>;
+    deleteProject: (projectId: string) => Promise<void>;
+    archiveProject: (projectId: string) => Promise<void>;
+    restoreProject: (projectId: string) => Promise<void>;
+    addTask: (task: Omit<Task, 'id'>) => Promise<void>;
+    updateTaskStatus: (taskId: string, newStatus: TaskStatus) => Promise<void>;
+    editTask: (taskId: string, updatedData: Partial<Task>) => Promise<void>;
+    deleteTask: (taskId: string) => Promise<void>;
 }
 
-export const useTaskStore = create<TaskStore>()(
-    persist(
-        (set) => ({
-            projects: mockProjects,
-            tasks: mockTasks,
-            activeProjectId: 'proj-1',
+export const useTaskStore = create<TaskStore>((set, get) => ({
+    projects: [],
+    tasks: [],
+    activeProjectId: '',
+    loading: true,
+    userUid: null,
 
-            setActiveProject: (id) => set({ activeProjectId: id }),
+    setUserUid: (uid) => set({ userUid: uid }),
+    setActiveProject: (id) => set({ activeProjectId: id }),
 
-            editTask: (id, updatedData) =>
-                set((state) => ({
-                    tasks: state.tasks.map(t =>
-                        t.id === id ? { ...t, ...updatedData, lastUpdated: new Date() } : t
-                    )
-                })),
+    subscribeData: (uid) => {
+        const qProjects = query(collection(db, `users/${uid}/projects`));
+        const qTasks = query(collection(db, `users/${uid}/tasks`));
 
-            addProject: (newProject) =>
-                set((state) => ({
-                    projects: [...state.projects, newProject]
-                })),
+        const unsubProjects = onSnapshot(qProjects, (snapshot) => {
+            const projects = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Project));
+            set({ projects, loading: false });
+            if (projects.length > 0 && !get().activeProjectId) {
+                set({ activeProjectId: projects[0].id });
+            }
+        });
 
-            archiveProject: (id) =>
-                set((state) => {
-                    const updatedProjects = state.projects.map(p => 
-                        p.id === id ? { ...p, isArchived: true } : p
-                    );
-                    const remainingActive = updatedProjects.filter(p => !p.isArchived);
-                    return {
-                        projects: updatedProjects,
-                        activeProjectId: state.activeProjectId === id
-                            ? (remainingActive.length > 0 ? remainingActive[0].id : '')
-                            : state.activeProjectId
-                    };
-                }),
+        const unsubTasks = onSnapshot(qTasks, (snapshot) => {
+            const tasks = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Task));
+            set({ tasks });
+        });
 
-            restoreProject: (id) =>
-                set((state) => {
-                    const updatedProjects = state.projects.map(p => 
-                        p.id === id ? { ...p, isArchived: false } : p
-                    );
-                    return { projects: updatedProjects };
-                }),
+        return () => { unsubProjects(); unsubTasks(); };
+    },
 
-            deleteProject: (id) =>
-                set((state) => {
-                    const remainingProjects = state.projects.filter(p => p.id !== id);
-                    return {
-                        projects: remainingProjects,
-                        tasks: state.tasks.filter(t => t.projectId !== id),
-                        activeProjectId: state.activeProjectId === id
-                            ? (remainingProjects.length > 0 ? remainingProjects[0].id : '')
-                            : state.activeProjectId
-                    };
-                }),
+    addProject: async (project) => {
+        const uid = get().userUid;
+        if (!uid) return;
+        await addDoc(collection(db, `users/${uid}/projects`), project);
+    },
 
-            addTask: (newTask) =>
-                set((state) => ({
-                    tasks: [...state.tasks, newTask]
-                })),
+    deleteProject: async (projectId) => {
+        const uid = get().userUid;
+        if (!uid) return;
+        await deleteDoc(doc(db, `users/${uid}/projects`, projectId));
+    },
 
-            deleteTask: (id) =>
-                set((state) => ({
-                    tasks: state.tasks.filter(t => t.id !== id)
-                })),
-
-            updateTaskStatus: (id, newStatus) =>
-                set((state) => ({
-                    tasks: state.tasks.map(t =>
-                        t.id === id
-                            ? { ...t, status: newStatus, lastUpdated: new Date() }
-                            : t
-                    )
-                })),
-        }),
-        {
-            name: 'cyber-task-storage', // 3. Este es el nombre del archivo en el "disco duro" del navegador
-            // Por defecto, Zustand usa localStorage, que es exactamente lo que queremos.
+    archiveProject: async (projectId) => {
+        const uid = get().userUid;
+        if (!uid) return;
+        const projRef = doc(db, `users/${uid}/projects`, projectId);
+        await updateDoc(projRef, { isArchived: true });
+        
+        // Clear activeProjectId if archived project was selected
+        const state = get();
+        if (state.activeProjectId === projectId) {
+            const remainingActive = state.projects.filter(p => p.id !== projectId && !p.isArchived);
+            set({ activeProjectId: remainingActive.length > 0 ? remainingActive[0].id : '' });
         }
-    )
-);
+    },
 
+    restoreProject: async (projectId) => {
+        const uid = get().userUid;
+        if (!uid) return;
+        const projRef = doc(db, `users/${uid}/projects`, projectId);
+        await updateDoc(projRef, { isArchived: false });
+    },
+
+    addTask: async (task) => {
+        const uid = get().userUid;
+        if (!uid) return;
+        await addDoc(collection(db, `users/${uid}/tasks`), {
+            ...task,
+            lastUpdated: new Date()
+        });
+    },
+
+    updateTaskStatus: async (taskId, newStatus) => {
+        const uid = get().userUid;
+        if (!uid) return;
+        const taskRef = doc(db, `users/${uid}/tasks`, taskId);
+        await updateDoc(taskRef, {
+            status: newStatus,
+            lastUpdated: new Date()
+        });
+    },
+
+    editTask: async (taskId, updatedData) => {
+        const uid = get().userUid;
+        if (!uid) return;
+        const taskRef = doc(db, `users/${uid}/tasks`, taskId);
+        await updateDoc(taskRef, {
+            ...updatedData,
+            lastUpdated: new Date()
+        });
+    },
+
+    deleteTask: async (taskId) => {
+        const uid = get().userUid;
+        if (!uid) return;
+        await deleteDoc(doc(db, `users/${uid}/tasks`, taskId));
+    }
+}));
