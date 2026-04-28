@@ -152,18 +152,20 @@ export default function Home() {
             e.preventDefault();
             if (!newProjectName.trim()) return;
 
-            const newProject = {
-              id: 'proj-' + Math.random().toString(36).substr(2, 9),
+            const newProject: any = {
               name: newProjectName.trim(),
               isActive: true,
               colorTheme: newProjectColor,
-              createdAt: new Date(),
-              dueDate: newProjectDueDate ? new Date(newProjectDueDate) : undefined
+              createdAt: new Date()
             };
+            
+            if (newProjectDueDate) {
+                newProject.dueDate = new Date(newProjectDueDate);
+            }
+            
             addProject(newProject);
             setNewProjectName('');
             setNewProjectDueDate('');
-            setActiveProject(newProject.id);
           }}
           className="mt-6 flex flex-col gap-2"
         >

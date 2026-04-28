@@ -67,7 +67,8 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     addProject: async (project) => {
         const uid = get().userUid;
         if (!uid) return;
-        await addDoc(collection(db, `users/${uid}/projects`), project);
+        const docRef = await addDoc(collection(db, `users/${uid}/projects`), project);
+        set({ activeProjectId: docRef.id });
     },
 
     deleteProject: async (projectId) => {
