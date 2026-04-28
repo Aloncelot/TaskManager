@@ -65,8 +65,8 @@ export const Board: React.FC<Props> = ({ tasks, projects, activeProjectId }) => 
         <div className="flex-1 overflow-x-auto p-6 custom-scrollbar relative z-10">
 
             {/* ==========================================
-          CABECERA DEL TABLERO
-      ========================================== */}
+                        CABECERA DEL TABLERO
+                ========================================== */}
             <div className="mb-8 flex items-center justify-between border-l-4 border-[#00ffff] pl-4">
                 <div>
                     <h1 className="text-3xl font-black uppercase tracking-tighter text-white flex items-center gap-3">
@@ -74,7 +74,7 @@ export const Board: React.FC<Props> = ({ tasks, projects, activeProjectId }) => 
                             {activeProject?.name || 'Unselected'}
                         </span>
                         {activeProject && (
-                            <button 
+                            <button
                                 onClick={() => archiveProject(activeProjectId)}
                                 className="text-gray-500 hover:text-yellow-500 transition-colors"
                                 title="Move to History / Archive"
