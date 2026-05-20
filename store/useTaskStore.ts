@@ -130,6 +130,16 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
         if (!projectToDelete) return;
         const tasksToDelete = state.tasks.filter(t => t.projectId === projectId);
 
+        // Optimistic local update
+        const remainingProjects = state.projects.filter(p => p.id !== projectId);
+        const remainingActive = remainingProjects.filter(p => !p.isArchived);
+        set({
+            projects: remainingProjects,
+            activeProjectId: state.activeProjectId === projectId
+                ? (remainingActive.length > 0 ? remainingActive[0].id : '')
+                : state.activeProjectId
+        });
+
         get().pushUndo(`Delete project: ${projectToDelete.name}`, async () => {
             await setDoc(doc(db, `users/${uid}/projects`, projectToDelete.id), {
                 name: projectToDelete.name,
@@ -171,7 +181,21 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
         const project = state.projects.find(p => p.id === projectId);
         if (!project) return;
 
+        // Optimistic local update
+        const updatedProjects = state.projects.map(p => p.id === projectId ? { ...p, isArchived: true } : p);
+        const activeProjects = updatedProjects.filter(p => !p.isArchived);
+        set({
+            projects: updatedProjects,
+            activeProjectId: state.activeProjectId === projectId
+                ? (activeProjects.length > 0 ? activeProjects[0].id : '')
+                : state.activeProjectId
+        });
+
         get().pushUndo(`Archive project: ${project.name}`, async () => {
+            // Optimistic local undo
+            set(s => ({
+                projects: s.projects.map(p => p.id === projectId ? { ...p, isArchived: false } : p)
+            }));
             await updateDoc(doc(db, `users/${uid}/projects`, projectId), { isArchived: false });
         });
 
@@ -185,7 +209,15 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
         const project = state.projects.find(p => p.id === projectId);
         if (!project) return;
 
+        // Optimistic local update
+        set(s => ({
+            projects: s.projects.map(p => p.id === projectId ? { ...p, isArchived: false } : p)
+        }));
+
         get().pushUndo(`Restore project: ${project.name}`, async () => {
+            set(s => ({
+                projects: s.projects.map(p => p.id === projectId ? { ...p, isArchived: true } : p)
+            }));
             await updateDoc(doc(db, `users/${uid}/projects`, projectId), { isArchived: true });
         });
 
