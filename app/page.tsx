@@ -26,7 +26,8 @@ export default function Home() {
   const {
     projects, tasks, activeProjectId,
     setActiveProject, addProject, deleteProject,
-    userUid, setUserUid, subscribeData
+    userUid, setUserUid, subscribeData,
+    undoStack, undo
   } = useTaskStore();
 
   const router = useRouter();
@@ -36,6 +37,17 @@ export default function Home() {
   const [newProjectDueDate, setNewProjectDueDate] = useState('');
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [userProfile, setUserProfile] = useState<{ name: string | null; email: string | null } | null>(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+        e.preventDefault();
+        undo();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [undo]);
 
   useEffect(() => {
     setIsMounted(true);
@@ -211,6 +223,25 @@ export default function Home() {
 
       {/* MAIN BOARD */}
       <Board tasks={tasks} projects={projects} activeProjectId={activeProjectId} />
+
+      {/* UNDO TRIGGER */}
+      {undoStack.length > 0 && (
+        <button
+          onClick={() => undo()}
+          className="fixed bottom-6 left-80 z-50 bg-[#0b2229] hover:bg-[#00ffff] text-[#00ffff] hover:text-black border border-cyan-900/50 hover:border-[#00ffff] px-4 py-2.5 font-mono text-xs uppercase tracking-widest shadow-[0_0_20px_rgba(0,255,255,0.15)] hover:shadow-[0_0_25px_rgba(0,255,255,0.4)] transition-all duration-300 flex items-center gap-3 cursor-pointer"
+          style={{
+            clipPath: 'polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px)'
+          }}
+          title={`Deshacer: ${undoStack[undoStack.length - 1].description}`}
+        >
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#00ffff] opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-[#00ffff]"></span>
+          </span>
+          <span className="font-bold">DESHACER ACCIÓN ({undoStack.length})</span>
+          <span className="opacity-40 text-[9px] font-bold border border-cyan-900/30 px-1 py-0.5 rounded bg-black/40">CTRL+Z</span>
+        </button>
+      )}
 
       {/* ALERTS AND MODALS */}
       <GlobalAlerts />
